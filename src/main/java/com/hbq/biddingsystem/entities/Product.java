@@ -1,9 +1,11 @@
 package com.hbq.biddingsystem.entities;
 
-import com.hbq.biddingsystem.dtos.ProductDto;
 import lombok.*;
 
-import javax.persistence.*;
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.Table;
 import java.io.Serializable;
 
 @Data
@@ -23,9 +25,4 @@ public class Product extends BaseEntity<String> implements Serializable {
     @Enumerated(EnumType.STRING)
     private BiddingStatus biddingStatus;
 
-    @Transient
-    public ProductDto toDto() {
-        //TODO: convert product to dto
-        return null;
-    }
 }

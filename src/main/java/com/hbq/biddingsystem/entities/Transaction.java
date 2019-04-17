@@ -19,11 +19,11 @@ public class Transaction extends BaseEntity<String> implements Serializable {
     private String description;
 
     @ManyToOne
-    @JoinColumn(name = "id")
+    @JoinColumn(name = "id", insertable = false, updatable = false)
     private User user;
 
     @ManyToOne
-    @JoinColumn(name = "id")
+    @JoinColumn(name = "id", insertable = false, updatable = false)
     private Product product;
 
     @Enumerated(EnumType.STRING)

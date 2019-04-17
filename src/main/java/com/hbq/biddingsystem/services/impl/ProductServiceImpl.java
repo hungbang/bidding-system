@@ -5,6 +5,7 @@ import com.hbq.biddingsystem.dtos.ProductDto;
 import com.hbq.biddingsystem.entities.Product;
 import com.hbq.biddingsystem.repository.ProductRepository;
 import com.hbq.biddingsystem.services.ProductService;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,22 +16,24 @@ import java.util.stream.Collectors;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final ModelMapper modelMapper;
 
-    public ProductServiceImpl(ProductRepository productRepository) {
+    public ProductServiceImpl(ProductRepository productRepository, ModelMapper modelMapper) {
         this.productRepository = productRepository;
+        this.modelMapper = modelMapper;
     }
 
     @Override
     public ProductDto createProduct(ProductDto productDto) {
-        Product product = productRepository.save(productDto.toEntity());
-        return product.toDto();
+        Product product = productRepository.save(toEntity(productDto));
+        return toDto(product);
     }
 
 
     @Override
     public ProductDto updateProduct(ProductDto productDto) {
-        Product product = productRepository.save(productDto.toEntity());
-        return product.toDto();
+        Product product = productRepository.save(toEntity(productDto));
+        return toDto(product);
     }
 
     @Override
@@ -43,7 +46,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductDto findProductById(String productId) {
         Optional<Product> optional =  productRepository.findById(productId);
         if (optional.isPresent()){
-            return optional.get().toDto();
+            return toDto(optional.get());
         }
         throw new NullPointerException("Entity cannot be found.");
     }
@@ -51,6 +54,17 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<ProductDto> findAll() {
         List<Product> products = productRepository.findAll();
-        return products.stream().map(Product::toDto).collect(Collectors.toList());
+        return products.stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+
+    //** Custom code **//
+
+    private ProductDto toDto(Product product){
+        return modelMapper.map(product, ProductDto.class);
+    }
+
+    private Product toEntity(ProductDto productDto){
+        return modelMapper.map(productDto, Product.class);
     }
 }

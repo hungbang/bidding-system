@@ -1,10 +1,18 @@
 package com.hbq.biddingsystem.dtos;
 
-import com.hbq.biddingsystem.entities.Product;
+import com.hbq.biddingsystem.entities.BiddingStatus;
+import lombok.*;
 
-public class ProductDto {
-    public Product toEntity() {
-        //TODO: mapping productDto to product entity
-        return null;
-    }
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper = false)
+public class ProductDto extends BaseDto{
+
+    private String title;
+    private String name;
+    private String description;
+    private String quantity;
+    private double startPrice;
+    private BiddingStatus biddingStatus;
 }
