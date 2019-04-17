@@ -3,8 +3,6 @@ package com.hbq.biddingsystem.entities;
 import lombok.*;
 
 import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
 import javax.persistence.Table;
 import java.io.Serializable;
 
@@ -21,8 +19,7 @@ public class Product extends BaseEntity<String> implements Serializable {
     private String name;
     private String description;
     private String quantity;
-    private double startPrice;
-    @Enumerated(EnumType.STRING)
-    private BiddingStatus biddingStatus;
+    private double price;
+
 
 }
