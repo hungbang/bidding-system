@@ -7,5 +7,7 @@ import java.util.List;
 
 public interface BiddingInformationRepository extends JpaRepository<BiddingInformation, String> {
 
-    List<BiddingInformation> findAllByBidder_EmailOrBidder_IdOrderByCreationDate(String email, String id);
+    List<BiddingInformation> findAllByBidder_EmailOrderByCreationDateDesc(String email);
+
+    List<BiddingInformation> findAllByAuctionCampaign_IdOrderByBidingPriceDesc(String auctionId);
 }

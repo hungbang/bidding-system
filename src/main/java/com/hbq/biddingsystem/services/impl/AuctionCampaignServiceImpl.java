@@ -3,7 +3,9 @@ package com.hbq.biddingsystem.services.impl;
 import com.hbq.biddingsystem.dtos.AuctionCampaignDto;
 import com.hbq.biddingsystem.dtos.BiddingItemParam;
 import com.hbq.biddingsystem.entities.AuctionCampaign;
+import com.hbq.biddingsystem.entities.BiddingStatus;
 import com.hbq.biddingsystem.entities.Product;
+import com.hbq.biddingsystem.exception.OperationNotAllowedException;
 import com.hbq.biddingsystem.repository.AuctionCampaignRepository;
 import com.hbq.biddingsystem.repository.ProductRepository;
 import com.hbq.biddingsystem.services.AuctionCampaignService;
@@ -45,7 +47,16 @@ public class AuctionCampaignServiceImpl implements AuctionCampaignService {
     }
 
     @Override
-    public AuctionCampaignDto updateAuctionCampaign(AuctionCampaignDto auctionCampaignDto) {
+    public AuctionCampaignDto updateAuctionCampaign(AuctionCampaignDto auctionCampaignDto) throws OperationNotAllowedException {
+        //TODO: auctioneers cannot update/edit the price when bidding is progress
+        Optional<AuctionCampaign> optional = auctionCampaignRepository.findById(auctionCampaignDto.getId());
+        if(optional.isPresent()){
+            AuctionCampaign auctionCampaign = optional.get();
+            if(auctionCampaign.getBiddingStatus().equals(BiddingStatus.IN_PROGRESS)
+                    && auctionCampaign.getStartPrice().compareTo(auctionCampaignDto.getStartPrice()) != 0){
+                throw new OperationNotAllowedException("Cannot edit the price when bidding is in progress");
+            }
+        }
         return ourMapper.toDto(auctionCampaignRepository.save(ourMapper.toEntity(auctionCampaignDto)));
     }
 

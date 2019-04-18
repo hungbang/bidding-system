@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -15,6 +17,6 @@ import lombok.NoArgsConstructor;
 public class BiddingInformationDto extends BaseDto{
     private User bidder;
     private AuctionCampaign auctionCampaign;
-    private double bidingPrice;
+    private BigDecimal biddingPrice;
     private BiddingStatus biddingStatus;
 }

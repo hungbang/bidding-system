@@ -5,6 +5,7 @@ import lombok.*;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 @Data
 @AllArgsConstructor
@@ -19,7 +20,7 @@ public class Product extends BaseEntity<String> implements Serializable {
     private String name;
     private String description;
     private String quantity;
-    private double price;
+    private BigDecimal price;
 
 
 }

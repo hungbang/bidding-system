@@ -2,6 +2,7 @@ package com.hbq.biddingsystem.controllers;
 
 import com.hbq.biddingsystem.dtos.AuctionCampaignDto;
 import com.hbq.biddingsystem.dtos.BiddingItemParam;
+import com.hbq.biddingsystem.exception.OperationNotAllowedException;
 import com.hbq.biddingsystem.services.AuctionCampaignService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,7 +39,7 @@ public class AuctionCampaignController {
      * @return AuctionCampaignDto
      */
     @PutMapping
-    public ResponseEntity<AuctionCampaignDto> updateAuctionCampaign(@RequestBody AuctionCampaignDto auctionCampaignDto){
+    public ResponseEntity<AuctionCampaignDto> updateAuctionCampaign(@RequestBody AuctionCampaignDto auctionCampaignDto) throws OperationNotAllowedException {
         return ResponseEntity.ok(auctionCampaignService.updateAuctionCampaign(auctionCampaignDto));
     }
 

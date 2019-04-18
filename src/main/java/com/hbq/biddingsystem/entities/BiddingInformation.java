@@ -7,6 +7,7 @@ import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.Table;
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 @Data
 @NoArgsConstructor
@@ -18,7 +19,7 @@ import java.io.Serializable;
 public class BiddingInformation extends BaseEntity<String> implements Serializable {
     private User bidder;
     private AuctionCampaign auctionCampaign;
-    private double bidingPrice;
+    private BigDecimal biddingPrice;
     @Enumerated(EnumType.STRING)
     private BiddingStatus biddingStatus;
 }
