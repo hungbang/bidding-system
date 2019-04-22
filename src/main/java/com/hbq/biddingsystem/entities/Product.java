@@ -19,7 +19,7 @@ public class Product extends BaseEntity<String> implements Serializable {
     private String title;
     private String name;
     private String description;
-    private String quantity;
+    private int quantity;
     private BigDecimal price;
 
 

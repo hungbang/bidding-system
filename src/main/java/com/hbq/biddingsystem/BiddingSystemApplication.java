@@ -15,9 +15,9 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 public class BiddingSystemApplication {
 
     public static void main(String[] args) {
+
         SpringApplication.run(BiddingSystemApplication.class, args);
     }
-
 
 
     @Bean

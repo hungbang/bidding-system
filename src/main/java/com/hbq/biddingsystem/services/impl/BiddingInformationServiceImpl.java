@@ -15,13 +15,12 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional(rollbackOn = Throwable.class)
-public class BiddingInformationSerivceImpl implements BiddingInformationService {
+public class BiddingInformationServiceImpl implements BiddingInformationService {
 
-    private final static int LOWER_OPERATION = -1;
     private final BiddingInformationRepository biddingInformationRepository;
     private final OurMapper ourMapper;
 
-    public BiddingInformationSerivceImpl(BiddingInformationRepository biddingInformationRepository, OurMapper ourMapper) {
+    public BiddingInformationServiceImpl(BiddingInformationRepository biddingInformationRepository, OurMapper ourMapper) {
         this.biddingInformationRepository = biddingInformationRepository;
         this.ourMapper = ourMapper;
     }
@@ -34,19 +33,20 @@ public class BiddingInformationSerivceImpl implements BiddingInformationService 
     }
 
     private void priceCanPerformBid(BiddingInformationDto biddingInformationDto) {
-        List<BiddingInformation> biddingInformations =
-                biddingInformationRepository.findAllByAuctionCampaign_IdOrderByBidingPriceDesc(biddingInformationDto.getAuctionCampaign().getId());
-        if(!biddingInformations.isEmpty()){
-            if(biddingInformationDto.getBiddingPrice().compareTo(biddingInformations.get(0).getBiddingPrice()) < 0){
+        BiddingInformation biddingInformation =
+                biddingInformationRepository.findTopByAuctionCampaign_IdOrderByBiddingPriceDesc(biddingInformationDto.getAuctionCampaign().getId());
+        if (biddingInformation != null) {
+            if (biddingInformationDto.getBiddingPrice().compareTo(biddingInformation.getBiddingPrice()) < 0) {
                 throw new IllegalArgumentException("Can not bid a lower price");
             }
         }
+
     }
 
     @Override
     public List<BiddingInformationDto> findByCriteria(BidCriteria bidCriteria) {
         return biddingInformationRepository
-                .findAllByBidder_EmailOrderByCreationDateDesc(bidCriteria.getEmail())
+                .findByBidder_EmailOrderByCreationDateDesc(bidCriteria.getEmail())
                 .stream()
                 .map(ourMapper::toDto)
                 .collect(Collectors.toList());

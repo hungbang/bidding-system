@@ -28,6 +28,7 @@ public abstract class BaseEntity<PK extends Serializable> implements Persistable
     @GeneratedValue(generator = "system-uuid")
     @GenericGenerator(name = "system-uuid", strategy = "uuid2")
     @Nullable
+    @Column(name = "id", updatable = false, nullable = false)
     protected PK id;
 
     @CreatedDate
