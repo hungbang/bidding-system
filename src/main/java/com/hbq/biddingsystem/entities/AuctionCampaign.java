@@ -3,6 +3,7 @@ package com.hbq.biddingsystem.entities;
 import lombok.*;
 
 import javax.persistence.Entity;
+import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import java.io.Serializable;
@@ -19,7 +20,9 @@ import java.util.List;
 @Table(name = "auctionCampaign")
 public class AuctionCampaign extends BaseEntity<String> implements Serializable {
 
+    @ManyToOne
     private User auctioneer;
+    @ManyToOne
     private Product product;
     private BigDecimal startPrice;
     private LocalDateTime startBidDate;
