@@ -7,3 +7,12 @@ spring:
     jpa:
         hibernate:
             ddl-auto: create
+    kafka:
+        producer:
+            bootstrap-servers: localhost:9092
+        consumer:
+            bootstrap-servers: localhost:9092
+            group-id: tpd-bid
+
+kafka:
+    topic: topic-bid
