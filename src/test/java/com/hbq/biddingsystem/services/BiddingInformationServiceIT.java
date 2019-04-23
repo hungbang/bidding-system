@@ -96,23 +96,29 @@ public class BiddingInformationServiceIT {
     static final String WEBSOCKET_TOPIC = "/topic/updateBid";
 
     BlockingQueue<String> blockingQueue;
-    WebSocketStompClient stompClient;
+    public WebSocketStompClient stompClient;
 
     String URL;
     private List<User> users;
     private AuctionCampaign auctionCampaign;
     private List<Product> products;
     String WEBSOCKET_URI = null;
-
-    private void initSocket(){
+    StompSession session;
+    private void initSocket() throws InterruptedException, ExecutionException, TimeoutException {
         blockingQueue = new LinkedBlockingDeque<>();
         stompClient = new WebSocketStompClient(new SockJsClient(
                 Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()))));
         WEBSOCKET_URI = "ws://localhost:" + port + "/webSocket";
+         session = stompClient
+                .connect(WEBSOCKET_URI, new StompSessionHandlerAdapter() {
+                })
+                .get(1, SECONDS);
+        session.subscribe(WEBSOCKET_TOPIC, new BiddingStompFrameHandler());
+
     }
 
     @Before
-    public void before() {
+    public void before() throws InterruptedException, ExecutionException, TimeoutException {
         // prepare data for test
         users = prepareDataForTest.createUsers();
         products = prepareDataForTest.createProducts();
@@ -141,12 +147,6 @@ public class BiddingInformationServiceIT {
                 .bidder(users.stream().filter(user -> user.getType().equals(UserType.BIDDER)).findFirst().get())
                 .build();
 
-        StompSession session = stompClient
-                .connect(WEBSOCKET_URI, new StompSessionHandlerAdapter() {
-                })
-                .get(1, SECONDS);
-        session.subscribe(WEBSOCKET_TOPIC, new BiddingStompFrameHandler());
-
         //WHEN
         val result = mockMvc.perform(MockMvcRequestBuilders.post("/v1/biddingInformations")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -162,6 +162,7 @@ public class BiddingInformationServiceIT {
         }
         assertNotNull("Body should not be null", result.getResponse().getContentAsString());
         assertNotEquals("The new bid price must be greater than the old one", dto.getBiddingPrice(), currentPrice);
+
 
         String messageData = blockingQueue.poll(10, SECONDS);
         assertNotNull(messageData);
@@ -188,7 +189,7 @@ public class BiddingInformationServiceIT {
 
         @Override
         public Type getPayloadType(StompHeaders stompHeaders) {
-            logger.info("payload type: ", stompHeaders.toString());
+            logger.info("payload type: {} ", stompHeaders.toString());
             return String.class;
         }
 

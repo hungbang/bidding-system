@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class KafkaConsumeService {
     private static final Logger logger = LoggerFactory.getLogger(KafkaConsumeService.class);
+
     private final SimpMessagingTemplate simpMessagingTemplate;
 
     public KafkaConsumeService(SimpMessagingTemplate simpMessagingTemplate) {
@@ -18,7 +19,7 @@ public class KafkaConsumeService {
 
     @KafkaListener(topics = "${kafka.topic}")
     public void consume(@Payload String message){
-        logger.info("The message is received :", message);
+        logger.info("The message is received : {}", message);
         simpMessagingTemplate.convertAndSend("/topic/updateBid", message);
     }
 }

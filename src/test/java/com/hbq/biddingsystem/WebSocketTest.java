@@ -32,7 +32,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 public class WebSocketTest {
 
     String WEBSOCKET_URI = null;
-    static final String WEBSOCKET_TOPIC = "/topic";
+    static final String WEBSOCKET_TOPIC = "/topic/updateBid";
 
     BlockingQueue<String> blockingQueue;
     WebSocketStompClient stompClient;
@@ -70,7 +70,11 @@ public class WebSocketTest {
 
         @Override
         public void handleFrame(StompHeaders stompHeaders, Object o) {
+
+            System.out.println("ashfsjkahf kasfkafka");
             blockingQueue.offer(new String((byte[]) o));
+            System.exit(1);
+            throw new RuntimeException("asfaasasssasa");
         }
     }
 
