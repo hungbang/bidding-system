@@ -52,7 +52,6 @@ public class BiddingInformationServiceImpl implements BiddingInformationService 
                 throw new IllegalArgumentException("Can not bid a lower price");
             }
         }
-
     }
 
     @Override

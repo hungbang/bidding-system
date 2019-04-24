@@ -1,20 +1,13 @@
 package com.hbq.biddingsystem.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hbq.biddingsystem.SimpleKafkaTest;
-import com.hbq.biddingsystem.WebSocketTest;
 import com.hbq.biddingsystem.dtos.BiddingInformationDto;
 import com.hbq.biddingsystem.entities.*;
-import com.hbq.biddingsystem.repository.BiddingInformationRepository;
 import com.hbq.biddingsystem.services.impl.PrepareDataForTest;
-import com.hbq.biddingsystem.utils.OurMapper;
 import lombok.val;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
@@ -27,8 +20,8 @@ import org.springframework.http.MediaType;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.test.rule.EmbeddedKafkaRule;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.messaging.converter.MappingJackson2MessageConverter;
-import org.springframework.messaging.simp.stomp.StompFrameHandler;
+import org.springframework.messaging.converter.StringMessageConverter;
+import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
@@ -43,15 +36,19 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 import org.springframework.web.socket.sockjs.client.SockJsClient;
 import org.springframework.web.socket.sockjs.client.Transport;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
+import org.springframework.web.util.NestedServletException;
 
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeoutException;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
 /**
  * Created by hungbang on 23/04/2019
@@ -63,7 +60,7 @@ import static org.junit.Assert.assertNotNull;
 @AutoConfigureMockMvc
 public class BiddingInformationServiceIT {
     private static final Logger LOGGER =
-            LoggerFactory.getLogger(SimpleKafkaTest.class);
+            LoggerFactory.getLogger(BiddingInformationServiceIT.class);
     private static final String TOPIC = "topic-bid";
 
     @ClassRule
@@ -81,39 +78,23 @@ public class BiddingInformationServiceIT {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Autowired
-    private OurMapper ourMapper;
-
-    @Autowired
-    private BiddingInformationRepository biddingInformationRepository;
-
-    @Autowired
-    private BiddingInformationService biddingInformationService;
-
-    @Autowired
-    private KafkaConsumeService kafkaConsumeService;
-
     static final String WEBSOCKET_TOPIC = "/topic/updateBid";
 
     BlockingQueue<String> blockingQueue;
-    public WebSocketStompClient stompClient;
 
-    String URL;
     private List<User> users;
     private AuctionCampaign auctionCampaign;
     private List<Product> products;
-    String WEBSOCKET_URI = null;
     StompSession session;
+
     private void initSocket() throws InterruptedException, ExecutionException, TimeoutException {
+        final String URL = "ws://localhost:" + port + "/webSocket";
         blockingQueue = new LinkedBlockingDeque<>();
-        stompClient = new WebSocketStompClient(new SockJsClient(
-                Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()))));
-        WEBSOCKET_URI = "ws://localhost:" + port + "/webSocket";
-         session = stompClient
-                .connect(WEBSOCKET_URI, new StompSessionHandlerAdapter() {
-                })
-                .get(1, SECONDS);
-        session.subscribe(WEBSOCKET_TOPIC, new BiddingStompFrameHandler());
+        final List<Transport> transportList =
+                Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()));
+        final WebSocketStompClient stompClient = new WebSocketStompClient(new SockJsClient(transportList));
+        stompClient.setMessageConverter(new StringMessageConverter());
+        session = stompClient.connect(URL, new CustomStompSessionHandlerAdapter()).get(5, SECONDS);
 
     }
 
@@ -122,11 +103,14 @@ public class BiddingInformationServiceIT {
         // prepare data for test
         users = prepareDataForTest.createUsers();
         products = prepareDataForTest.createProducts();
-        auctionCampaign = prepareDataForTest.createAuctionCampaigns(products.get(0), users.stream().filter(user -> user.getType().equals(UserType.AUCNEER))
-        .findFirst().get());
+        auctionCampaign = prepareDataForTest.createAuctionCampaigns(products.get(0),
+                users.stream().filter(user -> user.getType().equals(UserType.AUCNEER))
+                        .findFirst().get());
         // prepare kafka config before test
-        Map<String, Object> configs = new HashMap<>(KafkaTestUtils.consumerProps("consumer", "false", embeddedKafka.getEmbeddedKafka()));
-        consumer = new DefaultKafkaConsumerFactory<>(configs, new StringDeserializer(), new StringDeserializer()).createConsumer();
+        Map<String, Object> configs = new HashMap<>(KafkaTestUtils.consumerProps("consumer", "false",
+                embeddedKafka.getEmbeddedKafka()));
+        consumer =
+                new DefaultKafkaConsumerFactory<>(configs, new StringDeserializer(), new StringDeserializer()).createConsumer();
         consumer.subscribe(Collections.singleton(TOPIC));
         consumer.poll(0);
         //prepare socket for test
@@ -136,10 +120,11 @@ public class BiddingInformationServiceIT {
     @After
     public void tearDown() {
         consumer.close();
+        session.disconnect();
     }
 
     @Test
-    public void addBid() throws Exception {
+    public void addBidShouldBeSuccess() throws Exception {
         //GIVEN
         final BiddingInformation biddingInformation = BiddingInformation.builder().biddingPrice(BigDecimal.TEN)
                 .auctionCampaign(auctionCampaign)
@@ -156,46 +141,85 @@ public class BiddingInformationServiceIT {
         //THEN
         val dto = objectMapper.readValue(result.getResponse().getContentAsString(), BiddingInformationDto.class);
         BigDecimal currentPrice = auctionCampaign.getStartPrice();
-        if(!CollectionUtils.isEmpty(auctionCampaign.getBiddingInformations())){
-            val currentBid = auctionCampaign.getBiddingInformations().stream().min(Comparator.comparing(BiddingInformation::getBiddingPrice));
+        if (!CollectionUtils.isEmpty(auctionCampaign.getBiddingInformations())) {
+            val currentBid =
+                    auctionCampaign.getBiddingInformations().stream().min(Comparator.comparing(BiddingInformation::getBiddingPrice));
             currentPrice = currentBid.get().getBiddingPrice();
         }
         assertNotNull("Body should not be null", result.getResponse().getContentAsString());
         assertNotEquals("The new bid price must be greater than the old one", dto.getBiddingPrice(), currentPrice);
 
-
         String messageData = blockingQueue.poll(10, SECONDS);
+        LOGGER.info("======data received : {}", messageData);
+        BiddingInformationDto actualData = objectMapper.readValue(messageData, BiddingInformationDto.class);
         assertNotNull(messageData);
+        assertEquals("The Bidding price should the same one" ,biddingInformation.getBiddingPrice(),
+                actualData.getBiddingPrice());
+        assertEquals("The product should be the same one",biddingInformation.getAuctionCampaign().getProduct().getId(),
+                actualData.getAuctionCampaign().getProduct().getId());
     }
 
-    @Test
-    public void findByCriteria() {
-        //TODO: testing to fetch the BiddingInformation based on criteria
+    @Test(expected = NestedServletException.class)
+    public void addBidShouldBeFailureWhenPriceLower() throws Exception {
+        //GIVEN
+        final BiddingInformation biddingInformation = BiddingInformation.builder().biddingPrice(BigDecimal.TEN)
+                .auctionCampaign(auctionCampaign)
+                .biddingPrice(BigDecimal.valueOf(0.2))
+                .bidder(users.stream().filter(user -> user.getType().equals(UserType.BIDDER)).findFirst().get())
+                .build();
+
+        //WHEN
+        val result = mockMvc.perform(MockMvcRequestBuilders.post("/v1/biddingInformations")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(biddingInformation)))
+                .andReturn();
+
+        //THEN
+        val dto = objectMapper.readValue(result.getResponse().getContentAsString(), BiddingInformationDto.class);
+        BigDecimal currentPrice = auctionCampaign.getStartPrice();
+        if (!CollectionUtils.isEmpty(auctionCampaign.getBiddingInformations())) {
+            val currentBid =
+                    auctionCampaign.getBiddingInformations().stream().min(Comparator.comparing(BiddingInformation::getBiddingPrice));
+            currentPrice = currentBid.get().getBiddingPrice();
+        }
     }
 
 
+    //** custom code after this line **//
 
-    private List<Transport> createTransportClient() {
-        List<Transport> transports = new ArrayList<>(1);
-        transports.add(new WebSocketTransport(new StandardWebSocketClient()));
-        return transports;
-    }
-
-    private class BiddingStompFrameHandler implements StompFrameHandler {
-
-
-        private final Logger logger = LoggerFactory.getLogger(BiddingStompFrameHandler.class);
+    public class CustomStompSessionHandlerAdapter extends StompSessionHandlerAdapter {
 
 
         @Override
-        public Type getPayloadType(StompHeaders stompHeaders) {
-            logger.info("payload type: {} ", stompHeaders.toString());
+        public Type getPayloadType(StompHeaders headers) {
             return String.class;
         }
 
         @Override
-        public void handleFrame(StompHeaders stompHeaders, Object o) {
-            blockingQueue.offer(o.toString());
+        public void handleFrame(StompHeaders headers, Object payload) {
+            LOGGER.info("=======Handle Frame with payload: {}", payload);
+            try {
+                blockingQueue.offer((String) payload, 500, MILLISECONDS);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
+            session.subscribe(WEBSOCKET_TOPIC, this);
+        }
+
+        @Override
+        public void handleException(StompSession session, StompCommand command, StompHeaders headers, byte[] payload,
+                                    Throwable exception) {
+            LOGGER.warn("Stomp error: ", exception);
+        }
+
+        @Override
+        public void handleTransportError(StompSession session, Throwable exception) {
+            super.handleTransportError(session, exception);
+            LOGGER.warn("Stomp Transport Error:", exception);
         }
     }
 }
