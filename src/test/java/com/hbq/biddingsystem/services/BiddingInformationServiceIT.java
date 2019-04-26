@@ -3,6 +3,7 @@ package com.hbq.biddingsystem.services;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hbq.biddingsystem.dtos.BiddingInformationDto;
 import com.hbq.biddingsystem.entities.*;
+import com.hbq.biddingsystem.repository.BiddingInformationRepository;
 import com.hbq.biddingsystem.services.impl.PrepareDataForTest;
 import lombok.val;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -25,11 +26,13 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
@@ -40,11 +43,9 @@ import org.springframework.web.util.NestedServletException;
 
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -77,6 +78,8 @@ public class BiddingInformationServiceIT {
 
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private BiddingInformationRepository biddingInformationRepository;
 
     static final String WEBSOCKET_TOPIC = "/topic/updateBid";
 
@@ -133,34 +136,46 @@ public class BiddingInformationServiceIT {
                 .build();
 
         //WHEN
-        val result = mockMvc.perform(MockMvcRequestBuilders.post("/v1/biddingInformations")
+        val request = mockMvc.perform(MockMvcRequestBuilders.post("/v1/biddingInformations")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(biddingInformation)))
+                .andExpect(request().asyncStarted())
+                .andDo(MockMvcResultHandlers.log())
                 .andReturn();
 
+        val mockResult = mockMvc.perform(MockMvcRequestBuilders.asyncDispatch(request))
+                .andReturn();
         //THEN
-        val dto = objectMapper.readValue(result.getResponse().getContentAsString(), BiddingInformationDto.class);
+        val dto = objectMapper.readValue(mockResult.getResponse().getContentAsString(), BiddingInformationDto.class);
         BigDecimal currentPrice = auctionCampaign.getStartPrice();
         if (!CollectionUtils.isEmpty(auctionCampaign.getBiddingInformations())) {
             val currentBid =
                     auctionCampaign.getBiddingInformations().stream().min(Comparator.comparing(BiddingInformation::getBiddingPrice));
             currentPrice = currentBid.get().getBiddingPrice();
         }
-        assertNotNull("Body should not be null", result.getResponse().getContentAsString());
+        assertNotNull("Body should not be null", mockResult.getResponse().getContentAsString());
         assertNotEquals("The new bid price must be greater than the old one", dto.getBiddingPrice(), currentPrice);
 
         String messageData = blockingQueue.poll(10, SECONDS);
         LOGGER.info("======data received : {}", messageData);
         BiddingInformationDto actualData = objectMapper.readValue(messageData, BiddingInformationDto.class);
         assertNotNull(messageData);
-        assertEquals("The Bidding price should the same one" ,biddingInformation.getBiddingPrice(),
+        assertEquals("The Bidding price should the same one", biddingInformation.getBiddingPrice(),
                 actualData.getBiddingPrice());
-        assertEquals("The product should be the same one",biddingInformation.getAuctionCampaign().getProduct().getId(),
+        assertEquals("The product should be the same one", biddingInformation.getAuctionCampaign().getProduct().getId(),
                 actualData.getAuctionCampaign().getProduct().getId());
     }
 
     @Test(expected = NestedServletException.class)
     public void addBidShouldBeFailureWhenPriceLower() throws Exception {
+        // add first bid
+        final BiddingInformation firstBid = BiddingInformation.builder().biddingPrice(BigDecimal.TEN)
+                .auctionCampaign(auctionCampaign)
+                .biddingPrice(BigDecimal.valueOf(2))
+                .bidder(users.stream().filter(user -> user.getType().equals(UserType.BIDDER)).findFirst().get())
+                .build();
+        biddingInformationRepository.save(firstBid);
+
         //GIVEN
         final BiddingInformation biddingInformation = BiddingInformation.builder().biddingPrice(BigDecimal.TEN)
                 .auctionCampaign(auctionCampaign)
@@ -169,18 +184,64 @@ public class BiddingInformationServiceIT {
                 .build();
 
         //WHEN
-        val result = mockMvc.perform(MockMvcRequestBuilders.post("/v1/biddingInformations")
+        val request = mockMvc.perform(MockMvcRequestBuilders.post("/v1/biddingInformations")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(biddingInformation)))
+                .andExpect(request().asyncStarted())
+                .andDo(MockMvcResultHandlers.log())
                 .andReturn();
 
+        val mockResult = mockMvc.perform(MockMvcRequestBuilders.asyncDispatch(request)).andReturn();
         //THEN
-        val dto = objectMapper.readValue(result.getResponse().getContentAsString(), BiddingInformationDto.class);
-        BigDecimal currentPrice = auctionCampaign.getStartPrice();
-        if (!CollectionUtils.isEmpty(auctionCampaign.getBiddingInformations())) {
-            val currentBid =
-                    auctionCampaign.getBiddingInformations().stream().min(Comparator.comparing(BiddingInformation::getBiddingPrice));
-            currentPrice = currentBid.get().getBiddingPrice();
+        LOGGER.info("Should be thrown exception", mockResult);
+    }
+
+
+    @Test
+    public void test1000BidsPerMinutesSuccess(){
+
+        //GIVEN
+        int corePoolSize = 1000;
+        int maxPoolSize = 1001;
+
+        long keepAliveTime=0;
+        ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(corePoolSize, maxPoolSize, keepAliveTime,
+                MILLISECONDS, new LinkedBlockingDeque<>());
+        for (int i = 1; i <= 1000; i++){
+            final int price = i;
+            threadPoolExecutor.execute(() -> {
+                final BiddingInformation biddingInformation = BiddingInformation.builder().biddingPrice(BigDecimal.TEN)
+                        .auctionCampaign(auctionCampaign)
+                        .biddingPrice(BigDecimal.valueOf(price))
+                        .bidder(users.stream().filter(user -> user.getType().equals(UserType.BIDDER)).findFirst().get())
+                        .build();
+                try {
+                    val result = mockMvc.perform(MockMvcRequestBuilders.post("/v1/biddingInformations")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(biddingInformation)))
+                            .andExpect(request().asyncStarted())
+                            .andDo(MockMvcResultHandlers.log())
+                            .andReturn();
+
+                    val mockResult = mockMvc.perform(MockMvcRequestBuilders.asyncDispatch(result)).andReturn();
+                    String messageData = blockingQueue.poll(10, SECONDS);
+                    LOGGER.info("======data received : {}", messageData);
+                    BiddingInformationDto actualData = objectMapper.readValue(messageData, BiddingInformationDto.class);
+                    assertNotNull(messageData);
+                    assertEquals("The Bidding price should the same one", biddingInformation.getBiddingPrice(),
+                            actualData.getBiddingPrice());
+                    assertEquals("The product should be the same one", biddingInformation.getAuctionCampaign().getProduct().getId(),
+                            actualData.getAuctionCampaign().getProduct().getId());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                try {
+                    Thread.sleep(60);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+//               LOGGER.info("Testing======{}", LocalDateTime.now());
+            });
         }
     }
 

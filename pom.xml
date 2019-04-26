@@ -17,6 +17,11 @@
     <properties>
         <java.version>1.8</java.version>
         <google-guava.version>23.0</google-guava.version>
+        <atomikos.version>4.0.6</atomikos.version>
+        <hazelcast.version>3.7.5</hazelcast.version>
+        <google-guava.version>23.0</google-guava.version>
+
+
     </properties>
 
     <dependencies>
@@ -97,6 +102,80 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>5.4.0</version>
+        </dependency>
+
+
+        <!-- Atomikos -->
+        <dependency>
+            <groupId>com.atomikos</groupId>
+            <artifactId>transactions-jdbc</artifactId>
+            <version>${atomikos.version}</version>
+        </dependency>
+        <!--<dependency>-->
+        <!--<groupId>com.atomikos</groupId>-->
+        <!--<artifactId>transactions-api</artifactId>-->
+        <!--<version>${atomikos.version}</version>-->
+        <!--</dependency>-->
+        <dependency>
+            <groupId>com.atomikos</groupId>
+            <artifactId>transactions</artifactId>
+            <version>${atomikos.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.atomikos</groupId>
+            <artifactId>transactions-jta</artifactId>
+            <version>${atomikos.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.atomikos</groupId>
+            <artifactId>transactions-jms</artifactId>
+            <version>${atomikos.version}</version>
+        </dependency>
+
+        <!--hibernate -->
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-entitymanager</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-java8</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-validator</artifactId>
+            <version>5.3.6.Final</version>
+        </dependency>
+
+        <!--cache -->
+        <!-- Cache -->
+        <!-- hazelcast 3.7.5 -->
+        <dependency>
+            <groupId>com.hazelcast</groupId>
+            <artifactId>hazelcast</artifactId>
+            <version>${hazelcast.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.hazelcast</groupId>
+            <artifactId>hazelcast-spring</artifactId>
+            <version>${hazelcast.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.hazelcast</groupId>
+            <artifactId>hazelcast-client</artifactId>
+            <version>${hazelcast.version}</version>
+        </dependency>
+        <!--Supported version : https://github.com/hazelcast/hazelcast-hibernate5 -->
+        <dependency>
+            <groupId>com.hazelcast</groupId>
+            <artifactId>hazelcast-hibernate53</artifactId>
+            <version>${hazelcast-hibernate53.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${google-guava.version}</version>
         </dependency>
     </dependencies>
 

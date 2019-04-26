@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.concurrent.Callable;
 
 @RestController
 @RequestMapping("/v1/biddingInformations")
@@ -21,10 +22,15 @@ public class BiddingInformationController {
         this.biddingInformationService = biddingInformationService;
     }
 
+    /**
+     * async request processing
+     * @param biddingInformationDto
+     * @return
+     * @throws JsonProcessingException
+     */
     @PostMapping
-    public ResponseEntity<BiddingInformationDto> newBid(@RequestBody BiddingInformationDto biddingInformationDto) throws JsonProcessingException {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(biddingInformationService.addBid(biddingInformationDto));
+    public Callable<BiddingInformationDto> newBid(@RequestBody BiddingInformationDto biddingInformationDto) throws JsonProcessingException {
+        return () -> biddingInformationService.addBid(biddingInformationDto);
     }
 
 

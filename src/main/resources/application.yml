@@ -1,18 +1,24 @@
 spring:
     datasource:
         url: jdbc:h2:mem:bidding-system
+
     h2:
         console:
             enabled: true
     jpa:
         hibernate:
             ddl-auto: create
+        atomikos:
+            properties:
+                max-actives: 50
+
     kafka:
         producer:
             bootstrap-servers: localhost:9092
         consumer:
             bootstrap-servers: localhost:9092
             group-id: tpd-bid
+
 
 kafka:
     topic: topic-bid
